@@ -18,13 +18,25 @@ class BaseIntegrator(ABC):
 
     """
 
-    def __init__(self):
+    def __init__(self, system, step_size, final_time, initial_state):
         """
 
         Constructor method.
 
+        :param system: System to integrate over time.
+        :type system: object
+        :param step_size: Step size for the integration.
+        :type step_size: float
+        :param final_time: Final time for the integration.
+        :type final_time: float
+        :param initial_state: Initial state for the system.
+        :type initial_state: numpy.ndarray
+
         """
-        self.model = None
+        self.system = system
+        self.step_size = step_size
+        self.final_time = final_time
+        self.initial_state = initial_state
 
     @abstractmethod
     def integrate(self, *args):
