@@ -10,6 +10,8 @@ Author: Alvaro Marcos Canedo
 
 from abc import ABC, abstractmethod
 
+import numpy as np
+
 
 class BaseIntegrator(ABC):
     """
@@ -17,26 +19,28 @@ class BaseIntegrator(ABC):
     so its methods shall be overwritten.
 
     """
+    _system: object
 
-    def __init__(self, system, step_size, final_time, initial_state):
+    def __init__(self, system: object, initial_state: np.ndarray, final_time: float, step_size: float):
         """
 
         Constructor method.
 
-        :param system: System to integrate over time.
-        :type system: object
-        :param step_size: Step size for the integration.
-        :type step_size: float
-        :param final_time: Final time for the integration.
-        :type final_time: float
-        :param initial_state: Initial state for the system.
-        :type initial_state: numpy.ndarray
+        @param system: System to integrate over time.
+        @type system: object
+        @param initial_state: Initial state for the system.
+        @type initial_state: numpy.ndarray
+        @param final_time: Final time for the integration.
+        @type final_time: float
+        @param step_size: Step size for the integration.
+        @type step_size: float
 
         """
-        self.system = system
-        self.step_size = step_size
-        self.final_time = final_time
-        self.initial_state = initial_state
+        self._system = system
+        self._state = initial_state
+        self._step_size = step_size
+        self._final_time = final_time
+        self._initial_state = initial_state
 
     @abstractmethod
     def integrate(self, *args):
@@ -44,7 +48,7 @@ class BaseIntegrator(ABC):
 
         Method responsible for integrating the given equations over a given interval..
 
-        :param args: additional arguments of the integrate method (in the appropriate class).
+        @param args: additional arguments of the integrate method (in the appropriate class).
 
         """
 
@@ -57,19 +61,20 @@ class BaseIntegrator(ABC):
         Method responsible for integrating the given equations just for one step. It should take as input the current
         time, the current state and the time step size.
 
-        :param args: additional arguments of the integrate method (in the appropriate class).
+        @param args: additional arguments of the integrate method (in the appropriate class).
 
         """
 
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
     @abstractmethod
-    def get_step_size(self):
+    def get_step_size(self, *args):
         """
 
-        Method to return de value of the step size defined.
+        Method to get the current step_size of the method.
 
-        :return:
+        @param args: Additional arguments of the function.
+
         """
 
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
@@ -81,7 +86,7 @@ class BaseIntegrator(ABC):
         Method to set the value of the step size. It should include warnings and error checks. It should take as input
         new step size.
 
-        :param args: Additional arguments of the function. Defined in the appropriate class.
+        @param args: Additional arguments of the function. Defined in the appropriate class.
 
         """
 
@@ -93,7 +98,7 @@ class BaseIntegrator(ABC):
 
         Method to get the current state of the method.
 
-        :param args: Additional arguments of the function.
+        @param args: Additional arguments of the function.
 
         """
 
@@ -105,7 +110,7 @@ class BaseIntegrator(ABC):
 
         Method to set the current state of the model. It should take as input a new state.
 
-        :param args:
+        @param args:
 
         """
 
