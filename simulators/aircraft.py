@@ -9,7 +9,6 @@ Author: Alvaro Marcos Canedo
 
 """
 
-from scipy.signal import TransferFunction, lsim
 from abc import ABC, abstractmethod
 
 
@@ -29,7 +28,7 @@ class Aircraft(ABC):
         self.model = None
 
     @abstractmethod
-    def sensors(self, *args):
+    def _sensors(self, *args):
         """
 
         Definition of sensors of the aircraft.
@@ -42,7 +41,7 @@ class Aircraft(ABC):
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
     @abstractmethod
-    def actuators(self, *args):
+    def _actuators(self, *args):
         """
 
         Definition of actuators of the aircraft.
@@ -136,10 +135,23 @@ class Aircraft(ABC):
     def landing_gear(self, *args):
         """
 
-        Definition of the landing gear model for the aircraft
+        Definition of the landing gear model for the aircraft.
 
 
         @args : Additional arguments of the function.
+
+        """
+
+        raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
+
+    @abstractmethod
+    def forces(self, *args):
+        """
+
+        Definition of all the forces applicable to the aircraft.
+
+        @param args: Additional arguments of the function.
+
 
         """
 
