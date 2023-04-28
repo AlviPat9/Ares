@@ -145,13 +145,24 @@ class Aircraft(ABC):
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
     @abstractmethod
+    def gravity(self, *args):
+        """
+
+        Definition of the gravity model applicable to the aircraft.
+
+        @param args: Additional arguments of the function.
+
+        """
+
+        raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
+
+    @abstractmethod
     def forces(self, *args):
         """
 
         Definition of all the forces applicable to the aircraft.
 
         @param args: Additional arguments of the function.
-
 
         """
 
