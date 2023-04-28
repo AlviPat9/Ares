@@ -46,7 +46,7 @@ class BaseIntegrator(ABC):
     def integrate(self, *args):
         """
 
-        Method responsible for integrating the given equations over a given interval..
+        Method responsible for integrating the given equations over a given interval.
 
         @param args: additional arguments of the integrate method (in the appropriate class).
 

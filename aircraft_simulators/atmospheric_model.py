@@ -56,9 +56,9 @@ class AtmosphericModel(object):
             self.P = 22632.06 * exp(-34.1632 * (h - 11000) / (1000 * self.T))
 
         elif h < 32000.0:
-            # Atmospheric conditions at mid Stratosphere
+            # Atmospheric conditions at mid-Stratosphere
             self.T = 196.65 + h / 1000
-            self.P = 5474.889 * ( 216.65 / (216.65 + (h - 20000) / 1000)) ** 34.1632
+            self.P = 5474.889 * (216.65 / (216.65 + (h - 20000) / 1000)) ** 34.1632
 
         elif h < 47000.0:
             # Atmospheric conditions at high Stratosphere
@@ -71,7 +71,7 @@ class AtmosphericModel(object):
             self.P = 110.9063 * exp(-34.1632 * (h - 47000) / (1000 * 270.65))
 
         elif h < 71000.0:
-            # Atmospheric conditions at mid Mesosphere
+            # Atmospheric conditions at mid-Mesosphere
             self.T = 413.45 - 2.8 * h / 1000
             self.P = 66.93887 * (270.65 / (270.65 - 2.8 * (h - 51000) / 1000)) ** (34.1632 / -2.8)
 
