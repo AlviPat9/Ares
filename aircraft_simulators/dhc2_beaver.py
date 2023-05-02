@@ -8,8 +8,8 @@ Author: Alvaro Marcos Canedo
 """
 
 from Ares.simulators.aircraft import Aircraft
-from Ares.aicraft_simulations.atmospheric_model import AtmosphericModel
-from Ares.integrators.rk4 import RK4
+from Ares.aircraft_simulators.atmospheric_model import AtmosphericModel
+from Ares.integrators.forward_euler import ForwardEuler
 
 import numpy as np
 from scipy.signal import dlti
@@ -38,8 +38,8 @@ class DHC_beaver(Aircraft):
         super().__init__()
 
         # Call integrator
-        self.integration = RK4(system=self.equations(), step_size=step_size, final_time=final_time,
-                               initial_state=initial_state)
+        self.integration = ForwardEuler(system=self.equations(), step_size=step_size, final_time=final_time,
+                                        initial_state=initial_state)
 
         # Load aerodynamic data of the aircraft
         self.aero = {}
@@ -61,7 +61,7 @@ class DHC_beaver(Aircraft):
         self.b = 14.63  # Wing span [m]
         self.S = 23.23  # Wing area [m^2]
 
-    def _sensors(self, step_size):
+    def _sensors(self, step_size: float) -> dict:
         """
 
         Definition of the transfer functions of the actuators.
@@ -84,7 +84,7 @@ class DHC_beaver(Aircraft):
 
         return {'anemometer': anemometer, 'inertial': inertial}
 
-    def _actuators(self, step_size):
+    def _actuators(self, step_size: float) -> dict:
         """
 
         Definition of the actuators model for the aircraft.
@@ -107,7 +107,8 @@ class DHC_beaver(Aircraft):
 
         return {'aerodynamic': aerodynamic, 'Throttle_lever': throttle_lever}
 
-    def aerodynamic_model(self, n, angles, angular_speed, airspeed, delta, accelerations):
+    def aerodynamic_model(self, n: float, angles: dict, angular_speed: dict, airspeed: float, delta: dict,
+                          accelerations: dict) -> np.ndarray:
         """
         Aerodynamic model of the DHC2 - Beaver.
 
@@ -120,7 +121,7 @@ class DHC_beaver(Aircraft):
         @param airspeed: Airspeed of the aircraft.
         @type airspeed: float
         @param delta: Control surface deflection.
-        @type delta: float
+        @type delta: dict
         @param accelerations: Accelerations needed for the aerodynamic model of the DHC.
         @type accelerations: dict
 
@@ -131,37 +132,44 @@ class DHC_beaver(Aircraft):
 
         power_plant = self.power_plant_model(n, airspeed)
 
-        Cx = self.aero['CX_0'] + self.aero['CX_apt'] * power_plant + self.aero['CX_apt2_a'] * angles['alpha'] * power_plant ** 2 + \
-            self.aero['CX_a'] * angles['alpha'] + self.aero['CX_a2'] * angles['alpha'] ** 2 + \
-            self.aero['CX_a3'] * angles['alpha'] ** 3 + self.aero['CX_q'] * angular_speed['q'] * self.c / airspeed + \
-            self.aero['CX_dr'] * delta['r'] + self.aero['CX_df'] * delta['f'] + self.aero['CX_df_a'] * delta['f'] * angles['alpha']
+        Cx = self.aero['CX_0'] + self.aero['CX_apt'] * power_plant + self.aero['CX_apt2_a'] * angles[
+            'alpha'] * power_plant ** 2 + \
+             self.aero['CX_a'] * angles['alpha'] + self.aero['CX_a2'] * angles['alpha'] ** 2 + \
+             self.aero['CX_a3'] * angles['alpha'] ** 3 + self.aero['CX_q'] * angular_speed['q'] * self.c / airspeed + \
+             self.aero['CX_dr'] * delta['r'] + self.aero['CX_df'] * delta['f'] + self.aero['CX_df_a'] * delta['f'] * \
+             angles['alpha']
 
-        Cy = self.aero['CY_0'] + self.aero['CY_b'] * angles['beta'] + self.aero['CY_p'] * angular_speed['p'] * self.b / (2 * airspeed) + \
-            self.aero['CY_r'] * angular_speed['r'] * self.b / (2 * airspeed) + self.aero['CY_da'] * delta['a'] + \
-            self.aero['CY_dr'] * delta['r'] + self.aero['CY_dr_a'] * delta['r'] * angles['alpha'] + \
-            self.aero['CY_bp'] * accelerations * self.b / (airspeed * 2)
+        Cy = self.aero['CY_0'] + self.aero['CY_b'] * angles['beta'] + self.aero['CY_p'] * angular_speed[
+            'p'] * self.b / (2 * airspeed) + \
+             self.aero['CY_r'] * angular_speed['r'] * self.b / (2 * airspeed) + self.aero['CY_da'] * delta['a'] + \
+             self.aero['CY_dr'] * delta['r'] + self.aero['CY_dr_a'] * delta['r'] * angles['alpha'] + \
+             self.aero['CY_bp'] * accelerations['bp'] * self.b / (airspeed * 2)
 
         Cz = self.aero['CZ_0'] + self.aero['CZ_apt'] * power_plant + self.aero['CZ_a'] * angles['alpha'] + \
-            self.aero['CZ_a3'] * angles['alpha'] ** 3 + self.aero['CZ_q'] + angular_speed['q'] * self.c / airspeed + \
-            self.aero['CZ_de'] * delta['e'] + self.aero['CZ_de_b2'] * delta['e'] * angles['beta'] ** 2 + \
-            self.aero['CZ_df'] * delta['f'] + self.aero['CZ_df_a'] * delta['f'] * angles['alpha']
+             self.aero['CZ_a3'] * angles['alpha'] ** 3 + self.aero['CZ_q'] + angular_speed['q'] * self.c / airspeed + \
+             self.aero['CZ_de'] * delta['e'] + self.aero['CZ_de_b2'] * delta['e'] * angles['beta'] ** 2 + \
+             self.aero['CZ_df'] * delta['f'] + self.aero['CZ_df_a'] * delta['f'] * angles['alpha']
 
-        Cl = self.aero['Cl_0'] + self.aero['Cl_b'] * angles['beta'] + self.aero['Cl_p'] * angular_speed['p'] * self.b / (2 * airspeed) + \
-            self.aero['Cl_r'] * self.b / (2 * airspeed) + self.aero['Cl_da'] * delta['a'] + self.aero['Cl_dr'] * delta['r'] + \
-            self.aero['Cl_a2_apt'] * power_plant * angles['alpha'] ** 2 + self.aero['Cl_da_a'] * angles['alpha'] * delta['a']
+        Cl = self.aero['Cl_0'] + self.aero['Cl_b'] * angles['beta'] + \
+             self.aero['Cl_p'] * angular_speed['p'] * self.b / (2 * airspeed) + \
+             self.aero['Cl_r'] * self.b / (2 * airspeed) + self.aero['Cl_da'] * delta['a'] + \
+             self.aero['Cl_dr'] * delta['r'] + self.aero['Cl_a2_apt'] * power_plant * angles['alpha'] ** 2 + self.aero[
+                 'Cl_da_a'] * angles['alpha'] * \
+             delta['a']
 
         Cm = self.aero['Cm_0'] + self.aero['Cm_apt'] * power_plant + self.aero['Cm_a'] * angles['alpha'] + \
-            self.aero['Cm_a2'] * angles['alpha'] ** 2 + self.aero['Cm_q'] * angular_speed['q'] * self.c / airspeed + \
-            self.aero['Cm_de'] * delta['e'] + self.aero['Cm_b2'] * angles['beta'] ** 2 + \
-            self.aero['Cm_r'] * angular_speed['r'] * self.b / (2 * airspeed) + self.aero['Cm_df'] * delta['f']
+             self.aero['Cm_a2'] * angles['alpha'] ** 2 + self.aero['Cm_q'] * angular_speed['q'] * self.c / airspeed + \
+             self.aero['Cm_de'] * delta['e'] + self.aero['Cm_b2'] * angles['beta'] ** 2 + \
+             self.aero['Cm_r'] * angular_speed['r'] * self.b / (2 * airspeed) + self.aero['Cm_df'] * delta['f']
 
         Cn = self.aero['Cn_0'] + self.aero['Cn_b'] * angles['beta'] + + self.aero['Cn_b3'] * angles['beta'] ** 3 + \
-            self.aero['Cn_p'] * angular_speed['p'] * self.b / (2 * airspeed) + self.aero['Cn_da'] * delta['a'] + \
-            self.aero['Cn_dr'] * delta['r'] + self.aero['Cn_apt3'] * power_plant ** 3 + self.aero['Cn_q'] * self.c / airspeed
+             self.aero['Cn_p'] * angular_speed['p'] * self.b / (2 * airspeed) + self.aero['Cn_da'] * delta['a'] + \
+             self.aero['Cn_dr'] * delta['r'] + self.aero['Cn_apt3'] * power_plant ** 3 + self.aero[
+                 'Cn_q'] * self.c / airspeed
 
         return np.array([[Cx, Cy, Cz], [Cl, Cm, Cn]])
 
-    def power_plant_model(self, n, airspeed):
+    def power_plant_model(self, n: float, airspeed: float) -> float:
         """
 
         Definition of the engine model for the DHC2 - Beaver.
@@ -191,7 +199,48 @@ class DHC_beaver(Aircraft):
         return apt
 
     def equations(self, *args):
-        pass
+        """
+
+        Equations of the aircraft model developed for the DHC2 - Beaver.
+
+        @param args:
+
+        @return:
+        """
+
+        # Angular speeds
+        p = args[0]['p']
+        q = args[0]['q']
+        r = args[0]['r']
+
+        # Euler angles
+        phi = args[1]['phi']
+        theta = args[1]['theta']
+        psi = args[1]['psi']
+
+        # Position
+        x = args[2]['x']
+        y = args[2]['y']
+        z = args[2]['z']
+
+        # Speed
+        u = args[3]['u']
+        v = args[3]['v']
+        w = args[3]['w']
+
+        # Delta
+        delta = args[4]
+
+        # Accelerations
+        accelerations = args[5]
+
+        # Engine
+        n = args[6]
+
+        # Forces wrapper
+        forces, torques = self.forces(n=n, angles=args[1], angular_speed=args[0], airspeed=np.linalg.norm([u, v, w]),
+                                      delta=delta, euler_angles=args[1], accelerations=args[5], mass=self.mass['m'])
+        p = self.mass['Iz']
 
     def pid(self, *args):
         pass
@@ -199,7 +248,7 @@ class DHC_beaver(Aircraft):
     def controller(self, *args):
         pass
 
-    def mass_model(self):
+    def mass_model(self) -> dict:
         """
 
         Mass model for the DHC2 - Beaver
@@ -212,11 +261,64 @@ class DHC_beaver(Aircraft):
         # Definition of the mass model for the aircraft
         return {"Ix": 5368.39, "Iy": 6928.93, "Iz": 11158.75, "Ixz": 117.64, "Ixy": 0.0, "Iyz": 0.0, "m": 2288.231}
 
+    def gravity(self, euler_angles: dict, mass: float) -> np.ndarray:
+        """
+
+        Gravity model for the DHC2 - Beaver
+
+        @param euler_angles: Euler angles of the movement.
+        @type euler_angles: dict
+        @param mass: Mass of the aircraft.
+        @type mass: float
+
+        @return: Gravity applied to the aircraft.
+        @rtype: np.ndarray
+        """
+
+        return mass * self.g * np.array([np.cos(euler_angles['theta']),
+                                         np.sin(euler_angles['phi']) * np.cos(euler_angles['theta']),
+                                         np.cos(euler_angles['phi']) * np.cos(euler_angles['theta'])])
+
     def landing_gear(self, *args):
         pass
 
-    def forces(self, *args):
-        pass
+    def forces(self, n: float, angles: dict, angular_speed: dict, airspeed: float, delta: dict, accelerations: dict,
+               euler_angles: dict, mass: float) -> tuple:
+        """
+
+        Forces wrapper for the DHC2 - Beaver.
+
+        @param n: RPM of the engine.
+        @type n: float
+        @param angles: Necessary angles for determining the movement of the aircraft.
+        @type angles: dict
+        @param angular_speed: Angular speed of the aircraft.
+        @type angular_speed: dict
+        @param airspeed: Airspeed of the aircraft.
+        @type airspeed: float
+        @param delta: Control surface deflection.
+        @type delta: dict
+        @param accelerations: Accelerations needed for the aerodynamic model of the DHC.
+        @type accelerations: dict
+        @param euler_angles: Euler angles of the movement.
+        @type euler_angles: dict
+        @param mass: Mass of the aircraft.
+        @type mass: float
+
+        @return: Total forces (and torques) applied to the aircraft.
+        @rtype: tuple
+        """
+
+        # Aerodynamic forces -> For the DHC2 - Beaver the engine is included in the aerodynamic forces
+        aero = self.aerodynamic_model(n, angles, angular_speed, airspeed, delta, accelerations)
+
+        # Gravity forces
+        gravity = self.gravity(euler_angles, mass)
+
+        # Landing gear forces -> At the moment not included
+        # self.landing_gear()
+
+        return aero[0] + gravity, aero[1]
 
 
 __all__ = ["DHC_beaver"]
