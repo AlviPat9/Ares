@@ -25,7 +25,11 @@ class Aircraft(ABC):
         Constructor method.
 
         """
+
         self.model = None
+
+        # Definition of constants
+        self.g = 9.81
 
     @abstractmethod
     def _sensors(self, *args):
@@ -161,6 +165,18 @@ class Aircraft(ABC):
         """
 
         Definition of all the forces applicable to the aircraft.
+
+        @param args: Additional arguments of the function.
+
+        """
+
+        raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
+
+    @abstractmethod
+    def calculate(self, *args):
+        """
+
+        Method to launch the calculation of the equations of the aircraft.
 
         @param args: Additional arguments of the function.
 
