@@ -173,7 +173,7 @@ class Aircraft(ABC):
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
     @abstractmethod
-    def calculate(self, *args):
+    def step(self, *args):
         """
 
         Method to launch the calculation of the equations of the aircraft.
