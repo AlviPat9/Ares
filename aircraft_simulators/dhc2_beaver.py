@@ -203,7 +203,7 @@ class DHC_beaver(Aircraft):
 
         return apt
 
-    def equations(self, *args):
+    def equations(self, *args) -> np.ndarray:
         """
 
         Equations of the aircraft model developed for the DHC2 - Beaver.
@@ -214,37 +214,43 @@ class DHC_beaver(Aircraft):
         """
 
         # Angular speeds
-        p = args[0]['p']
-        q = args[0]['q']
-        r = args[0]['r']
+        p = args[1][0]
+        q = args[1][1]
+        r = args[1][2]
 
         # Euler angles
-        phi = args[1]['phi']
-        theta = args[1]['theta']
-        psi = args[1]['psi']
+        phi = args[1][3]
+        theta = args[1][4]
+        psi = args[1][5]
 
         # Position
-        x = args[2]['x']
-        y = args[2]['y']
-        z = args[2]['z']
+        x = args[1][6]
+        y = args[1][7]
+        z = args[1][8]
 
         # Speed
-        u = args[3]['u']
-        v = args[3]['v']
-        w = args[3]['w']
+        u = args[1][9]
+        v = args[1][10]
+        w = args[1][11]
 
         # Delta
-        delta = args[4]
+        delta = args[2]
 
         # Accelerations
-        accelerations = args[5]
+        # TODO -> Maybe the acceleration should be calculated here
+        accelerations = args[3]
 
         # Engine
-        n = args[6]
+        n = args[4]
+
+        # Calculate angle of attack and angle of sideslip
+        angles = {'alpha': 1, 'beta': 1}
 
         # Forces wrapper
-        forces, torques = self.forces(n=n, angles=args[1], angular_speed=args[0], airspeed=np.linalg.norm([u, v, w]),
-                                      delta=delta, euler_angles=args[1], accelerations=args[5], mass=self.mass['m'])
+        forces, torques = self.forces(n=n, angles=angles, angular_speed={'p': p, 'q': q, 'r': r},
+                                      airspeed=np.linalg.norm([u, v, w]), delta=delta,
+                                      euler_angles={'phi': phi, 'theta': theta, 'psi': psi}, accelerations=accelerations,
+                                      mass=self.mass['m'])
 
         pp = (self.mass['Iz'] * torques[0] + self.mass['Ixz'] * torques[2] - q * r * self.mass['Ixz'] ** 2 - q * r *
               self.mass[
@@ -273,15 +279,24 @@ class DHC_beaver(Aircraft):
 
         return np.array([pp, qp, rp, phip, thetap, psip, up, vp, wp, xp, yp, zp])
 
-    def calculate(self, *args):
+    def calculate(self):
         """
 
         Method to launch the calculation of the equations for the DHC2 - Beaver.
 
-        :param args:
-
-        :return:
+        @return:
         """
+
+        # TODO -> Correct implementation of control surfaces deflection and engine variables
+        delta = {'de': 0.0, 'dr': 0.0, 'da': 0.0, 'df': 0.0}
+        n = 1800
+        # TODO -> Calculate acceleration
+        acceleration = 0.0
+        aircraft_state = self.integration.get_state()
+
+        while self.integration.time < 1000:
+            aircraft_state = np.concatenate(aircraft_state, self.integration.integrate_step(self.integration.get_state(), delta, acceleration, n))
+
         pass
 
     def mass_model(self) -> dict:
