@@ -66,6 +66,10 @@ class DHC_beaver(Aircraft):
         self.b = 14.63  # Wing span [m]
         self.S = 23.23  # Wing area [m^2]
 
+        # Landing gear data definition
+        self.damp = 150  # Damping coefficient for the landing gear [Ns/m]
+        self.k = 2000  # Stiffness coefficient for the landing gear [N/m]
+
     def _sensors(self, step_size: float) -> dict:
         """
 
@@ -171,8 +175,12 @@ class DHC_beaver(Aircraft):
              self.aero['Cn_p'] * angular_speed['p'] * self.b / (2 * airspeed) + self.aero['Cn_da'] * delta['a'] + \
              self.aero['Cn_dr'] * delta['r'] + self.aero['Cn_apt3'] * power_plant ** 3 + self.aero[
                  'Cn_q'] * self.c / airspeed
+        #
+        # Cx = np.sin(angles['alpha']) * Cz_b + np.cos(angles['alpha']) * Cx_b
+        # Cz = - np.sin(angles['alpha']) * Cz_b - np.cos(angles['alpha']) * Cx_b
 
-        return np.array([[Cx, Cy, Cz], [Cl, Cm, Cn]])
+        return 0.5 * self.atmosphere.rho * airspeed ** 2 * self.S * np.array([[Cx, Cy, Cz],
+                                                                              [self.b * Cl, self.c * Cm, self.b * Cn]])
 
     def power_plant_model(self, n: float, airspeed: float) -> float:
         """
@@ -210,7 +218,8 @@ class DHC_beaver(Aircraft):
 
         @param args:
 
-        @return:
+        @return: Actual state of the aircraft based on its derivatives.
+        @rtype: np.ndarray
         """
 
         # Angular speeds
@@ -233,6 +242,10 @@ class DHC_beaver(Aircraft):
         v = args[1][10]
         w = args[1][11]
 
+        # Landing gear data
+        y_lg = args[1][12]
+        v_lg = args[1][13]
+
         # Delta
         delta = args[2]
 
@@ -250,7 +263,7 @@ class DHC_beaver(Aircraft):
         forces, torques = self.forces(n=n, angles=angles, angular_speed={'p': p, 'q': q, 'r': r},
                                       airspeed=np.linalg.norm([u, v, w]), delta=delta,
                                       euler_angles={'phi': phi, 'theta': theta, 'psi': psi}, accelerations=accelerations,
-                                      mass=self.mass['m'])
+                                      mass=self.mass['m'], y=y_lg, brake_pedal=delta['brake'])
 
         pp = (self.mass['Iz'] * torques[0] + self.mass['Ixz'] * torques[2] - q * r * self.mass['Ixz'] ** 2 - q * r *
               self.mass[
@@ -277,7 +290,11 @@ class DHC_beaver(Aircraft):
 
         xp, yp, zp = rotation.dot(np.array([x, y, z]))
 
-        return np.array([pp, qp, rp, phip, thetap, psip, up, vp, wp, xp, yp, zp])
+        # Landing gear dynamics
+        yp_lg = v_lg
+        vp_lg = (forces[2] - self.damp * v_lg - self.k * y_lg) / self.mass['m']
+
+        return np.array([pp, qp, rp, phip, thetap, psip, up, vp, wp, xp, yp, zp, yp_lg, vp_lg])
 
     def calculate(self):
         """
@@ -288,13 +305,14 @@ class DHC_beaver(Aircraft):
         """
 
         # TODO -> Correct implementation of control surfaces deflection and engine variables
-        delta = {'de': 0.0, 'dr': 0.0, 'da': 0.0, 'df': 0.0}
+        delta = {'de': 0.0, 'dr': 0.0, 'da': 0.0, 'df': 0.0, 'brake': 0.0}
         n = 1800
         # TODO -> Calculate acceleration
         acceleration = 0.0
         aircraft_state = self.integration.get_state()
 
         while self.integration.time < 1000:
+            self.atmosphere.calculate(aircraft_state[-1])
             aircraft_state = np.concatenate(aircraft_state, self.integration.integrate_step(self.integration.get_state(), delta, acceleration, n))
 
         pass
@@ -310,7 +328,8 @@ class DHC_beaver(Aircraft):
         """
 
         # Definition of the mass model for the aircraft
-        return {"Ix": 5368.39, "Iy": 6928.93, "Iz": 11158.75, "Ixz": 117.64, "Ixy": 0.0, "Iyz": 0.0, "m": 2288.231}
+        return {"Ix": 5368.39, "Iy": 6928.93, "Iz": 11158.75, "Ixz": 117.64, "Ixy": 0.0, "Iyz": 0.0, "m": 2288.231,
+                "cg": np.array([0.5996, 0.0, -0.8851])}
 
     def gravity(self, euler_angles: dict, mass: float) -> np.ndarray:
         """
@@ -326,12 +345,12 @@ class DHC_beaver(Aircraft):
         @rtype: np.ndarray
         """
 
-        return mass * self.g * np.array([np.cos(euler_angles['theta']),
+        return mass * self.g * np.array([np.sin(euler_angles['theta']),
                                          np.sin(euler_angles['phi']) * np.cos(euler_angles['theta']),
                                          np.cos(euler_angles['phi']) * np.cos(euler_angles['theta'])])
 
     def forces(self, n: float, angles: dict, angular_speed: dict, airspeed: float, delta: dict, accelerations: dict,
-               euler_angles: dict, mass: float) -> tuple:
+               euler_angles: dict, mass: float, y: float, brake_pedal: float) -> tuple:
         """
 
         Forces wrapper for the DHC2 - Beaver.
@@ -352,6 +371,10 @@ class DHC_beaver(Aircraft):
         @type euler_angles: dict
         @param mass: Mass of the aircraft.
         @type mass: float
+        @param y: Displacement of the landing gear.
+        @type y: float
+        @param brake_pedal: Pedal brake input from the pilot.
+        @type brake_pedal: float
 
         @return: Total forces (and torques) applied to the aircraft.
         @rtype: tuple
@@ -364,7 +387,9 @@ class DHC_beaver(Aircraft):
         gravity = self.gravity(euler_angles, mass)
 
         # Landing gear forces -> At the moment not included
-        # self.landing_gear()
+        lg_force = self.landing_gear(y, aero[0] * np.sin(angles['alpha']) + aero[2] * np.cos(angles['alpha']) + mass * self.g,
+                                     brake_pedal)
+        aero[0][0] += lg_force
 
         return aero[0] + gravity, aero[1]
 
@@ -389,8 +414,32 @@ class DHC_beaver(Aircraft):
                          [-np.sin(angles[1]), np.sin(angles[0]) * np.cos(angles[1]), np.cos(angles[0]) * np.cos(angles[1])]
                          ])
 
-    def landing_gear(self, *args):
-        pass
+    def landing_gear(self, y: float, normal_force: float, brake_pedal: float) -> float:
+        """
+
+        Landing gear model for the DHC2 - Beaver.
+
+        @param y: Displacement of the landing gear
+        @type y: float
+        @param normal_force: Normal forces that apply to the landing gear.
+        @type normal_force: float
+        @param brake_pedal: Pedal brake input from the pilot.
+        @type brake_pedal: float
+
+        @return:
+        """
+
+        if y >= 0:
+            # Falculate Friction Force
+            friction_coefficient = 0.3
+            F_friction = friction_coefficient * normal_force
+
+            # Calculate Braking forces
+            braking_coefficient = 0.2
+            F_brake = brake_pedal * normal_force * braking_coefficient
+            return F_friction + F_brake
+        else:
+            return 0.0
 
     def pid(self, *args):
         pass
