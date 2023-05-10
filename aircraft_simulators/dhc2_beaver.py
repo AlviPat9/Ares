@@ -31,35 +31,13 @@ class DHC_beaver(Aircraft):
         @param initial_state: Initial state of the model.
         @type initial_state: np.ndarray
         @param step_size: Step size for the calculation.
-        @type step_size: float
+        @type step_size: float, optional
         @param final_time: Final time for the simulation.
+        @type final_time: float, optional
 
         """
         # Call superclass
         super().__init__()
-
-        # Call integrator
-        self.integration = ForwardEuler(system=self.equations(), step_size=step_size, final_time=final_time,
-                                        initial_state=initial_state)
-
-        # Path to the aerodynamic coefficients
-        path = r'C:\ProgramData\Calculos\python\Ares\aircraft_simulators\dhc2_beaver_aero.json'
-
-        # Load aerodynamic data of the aircraft
-        with open(path, 'r') as f:
-            self.aero = json.load(f)
-
-        # Instantiate atmospheric model
-        self.atmosphere = AtmosphericModel()
-
-        # Definition of the mass model
-        self.mass = self.mass_model()
-
-        # Definition of sensors for the aircraft
-        self.sensors = self._sensors(step_size)
-
-        # Definition of actuators for the aircraft
-        self.actuators = self._actuators(step_size)
 
         # Definition of geometry of the aircraft
         self.c = 1.5875  # Mean aerodynamic Chord (MAC) [m]
@@ -69,6 +47,29 @@ class DHC_beaver(Aircraft):
         # Landing gear data definition
         self.damp = 150  # Damping coefficient for the landing gear [Ns/m]
         self.k = 2000  # Stiffness coefficient for the landing gear [N/m]
+
+        # Path to the aerodynamic coefficients
+        path = r'C:\ProgramData\Calculos\python\Ares\aircraft_simulators\dhc2_beaver_aero.json'
+
+        # Instantiate atmospheric model
+        self.atmosphere = AtmosphericModel()
+
+        # Load aerodynamic data of the aircraft
+        with open(path, 'r') as f:
+            self.aero = json.load(f)
+
+        # Call integrator
+        self.integration = ForwardEuler(system=self.equations(), step_size=step_size, final_time=final_time,
+                                        initial_state=initial_state)
+
+        # Definition of the mass model
+        self.mass = self.mass_model()
+
+        # Definition of sensors for the aircraft
+        self.sensors = self._sensors(step_size)
+
+        # Definition of actuators for the aircraft
+        self.actuators = self._actuators(step_size)
 
     def _sensors(self, step_size: float) -> dict:
         """
@@ -257,12 +258,13 @@ class DHC_beaver(Aircraft):
         n = args[4]
 
         # Calculate angle of attack and angle of sideslip
-        angles = {'alpha': 1, 'beta': 1}
+        angles = {'alpha': np.arctan2(w, u), 'beta': np.arctan2(v, (u ** 2 + w ** 2) ** 0.5)}
 
         # Forces wrapper
         forces, torques = self.forces(n=n, angles=angles, angular_speed={'p': p, 'q': q, 'r': r},
                                       airspeed=np.linalg.norm([u, v, w]), delta=delta,
-                                      euler_angles={'phi': phi, 'theta': theta, 'psi': psi}, accelerations=accelerations,
+                                      euler_angles={'phi': phi, 'theta': theta, 'psi': psi},
+                                      accelerations=accelerations,
                                       mass=self.mass['m'], y=y_lg, brake_pedal=delta['brake'])
 
         pp = (self.mass['Iz'] * torques[0] + self.mass['Ixz'] * torques[2] - q * r * self.mass['Ixz'] ** 2 - q * r *
@@ -313,7 +315,9 @@ class DHC_beaver(Aircraft):
 
         while self.integration.time < 1000:
             self.atmosphere.calculate(aircraft_state[-1])
-            aircraft_state = np.concatenate(aircraft_state, self.integration.integrate_step(self.integration.get_state(), delta, acceleration, n))
+            aircraft_state = np.concatenate(aircraft_state,
+                                            self.integration.integrate_step(self.integration.get_state(), delta,
+                                                                            acceleration, n))
 
         pass
 
@@ -387,9 +391,9 @@ class DHC_beaver(Aircraft):
         gravity = self.gravity(euler_angles, mass)
 
         # Landing gear forces -> At the moment not included
-        lg_force = self.landing_gear(y, aero[0] * np.sin(angles['alpha']) + aero[2] * np.cos(angles['alpha']) + mass * self.g,
-                                     brake_pedal)
-        aero[0][0] += lg_force
+        lg_force = self.landing_gear(y, aero[2] + mass * self.g, brake_pedal)
+
+        aero[0][0] -= lg_force
 
         return aero[0] + gravity, aero[1]
 
@@ -407,11 +411,18 @@ class DHC_beaver(Aircraft):
 
         """
 
-        return np.array([[np.cos(angles[1]) * np.cos(angles[2]), np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) - np.cos(angles[0]) * np.sin(angles[2]),
-                          np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) + np.sin(angles[0]) * np.sin(angles[2])],
-                         [np.cos(angles[1]) * np.sin(angles[2]), np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) + np.cos(angles[0]) * np.cos(angles[2]),
-                          np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) - np.sin(angles[0]) * np.cos(angles[2])],
-                         [-np.sin(angles[1]), np.sin(angles[0]) * np.cos(angles[1]), np.cos(angles[0]) * np.cos(angles[1])]
+        return np.array([[np.cos(angles[1]) * np.cos(angles[2]),
+                          np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) - np.cos(angles[0]) * np.sin(
+                              angles[2]),
+                          np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) + np.sin(angles[0]) * np.sin(
+                              angles[2])],
+                         [np.cos(angles[1]) * np.sin(angles[2]),
+                          np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) + np.cos(angles[0]) * np.cos(
+                              angles[2]),
+                          np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) - np.sin(angles[0]) * np.cos(
+                              angles[2])],
+                         [-np.sin(angles[1]), np.sin(angles[0]) * np.cos(angles[1]),
+                          np.cos(angles[0]) * np.cos(angles[1])]
                          ])
 
     def landing_gear(self, y: float, normal_force: float, brake_pedal: float) -> float:
@@ -426,18 +437,21 @@ class DHC_beaver(Aircraft):
         @param brake_pedal: Pedal brake input from the pilot.
         @type brake_pedal: float
 
-        @return:
+        @return: Force opposite to direction of the movement
+        @rtype: float
         """
 
         if y >= 0:
-            # Falculate Friction Force
+            # Calculate Friction Force
             friction_coefficient = 0.3
             F_friction = friction_coefficient * normal_force
 
             # Calculate Braking forces
             braking_coefficient = 0.2
             F_brake = brake_pedal * normal_force * braking_coefficient
+
             return F_friction + F_brake
+
         else:
             return 0.0
 
