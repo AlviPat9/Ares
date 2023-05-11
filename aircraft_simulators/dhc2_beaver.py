@@ -48,6 +48,9 @@ class DHC_beaver(Aircraft):
         self.damp = 150  # Damping coefficient for the landing gear [Ns/m]
         self.k = 2000  # Stiffness coefficient for the landing gear [N/m]
 
+        # Fuel consumption
+        self.fc = 76 / 3600  # [kg/s]
+
         # Path to the aerodynamic coefficients
         path = r'C:\ProgramData\Calculos\python\Ares\aircraft_simulators\dhc2_beaver_aero.json'
 
@@ -296,6 +299,8 @@ class DHC_beaver(Aircraft):
         yp_lg = v_lg
         vp_lg = (forces[2] - self.damp * v_lg - self.k * y_lg) / self.mass['m']
 
+        # TODO -> Add fuel consumption
+
         return np.array([pp, qp, rp, phip, thetap, psip, up, vp, wp, xp, yp, zp, yp_lg, vp_lg])
 
     def calculate(self):
@@ -397,34 +402,6 @@ class DHC_beaver(Aircraft):
 
         return aero[0] + gravity, aero[1]
 
-    @staticmethod
-    def rotation_matrix(angles):
-        """
-
-        Rotation matrix.
-
-        @param angles: angles to compute the rotation (X - Y - Z).
-        @type angles: np.ndarray
-
-        @return: Rotation matrix for the angles defined in the input.
-        @rtype: np.ndarray
-
-        """
-
-        return np.array([[np.cos(angles[1]) * np.cos(angles[2]),
-                          np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) - np.cos(angles[0]) * np.sin(
-                              angles[2]),
-                          np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) + np.sin(angles[0]) * np.sin(
-                              angles[2])],
-                         [np.cos(angles[1]) * np.sin(angles[2]),
-                          np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) + np.cos(angles[0]) * np.cos(
-                              angles[2]),
-                          np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) - np.sin(angles[0]) * np.cos(
-                              angles[2])],
-                         [-np.sin(angles[1]), np.sin(angles[0]) * np.cos(angles[1]),
-                          np.cos(angles[0]) * np.cos(angles[1])]
-                         ])
-
     def landing_gear(self, y: float, normal_force: float, brake_pedal: float) -> float:
         """
 
@@ -460,6 +437,45 @@ class DHC_beaver(Aircraft):
 
     def controller(self, *args):
         pass
+
+    def reset(self) -> np.ndarray:
+        """
+
+        Reset method for the simulation.
+
+        @return: Initial state of the simulation.
+        @rtype: np.ndarray
+        """
+
+        return self.integration.reset()
+
+    @staticmethod
+    def rotation_matrix(angles):
+        """
+
+        Rotation matrix.
+
+        @param angles: angles to compute the rotation (X - Y - Z).
+        @type angles: np.ndarray
+
+        @return: Rotation matrix for the angles defined in the input.
+        @rtype: np.ndarray
+
+        """
+
+        return np.array([[np.cos(angles[1]) * np.cos(angles[2]),
+                          np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) - np.cos(angles[0]) * np.sin(
+                              angles[2]),
+                          np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) + np.sin(angles[0]) * np.sin(
+                              angles[2])],
+                         [np.cos(angles[1]) * np.sin(angles[2]),
+                          np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) + np.cos(angles[0]) * np.cos(
+                              angles[2]),
+                          np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) - np.sin(angles[0]) * np.cos(
+                              angles[2])],
+                         [-np.sin(angles[1]), np.sin(angles[0]) * np.cos(angles[1]),
+                          np.cos(angles[0]) * np.cos(angles[1])]
+                         ])
 
 
 __all__ = ["DHC_beaver"]
