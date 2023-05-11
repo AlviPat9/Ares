@@ -41,6 +41,25 @@ class BaseIntegrator(ABC):
         self._step_size = step_size
         self._final_time = final_time
         self._initial_state = initial_state
+        self.time = None
+
+    def reset(self) -> np.ndarray:
+        """
+
+        Method to reset the integrator to its initial conditions. This method is created basically to fit reinforcement
+        learning agent reset method.
+
+        @return: Initial conditions of the simulation.
+        @rtype: np.ndarray
+        """
+
+        # Reset current state to initial state
+        self._state = self._initial_state
+
+        # Reset current time to initial time (It is assumed to be 0)
+        self.time = 0.0
+
+        return self._state
 
     @abstractmethod
     def integrate(self, *args):
