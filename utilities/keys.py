@@ -18,6 +18,7 @@ class AircraftKeys:
     """
 
     # Angles
+    euler_angles = "euler_angles"
     phi = "phi"
     theta = "theta"
     psi = "psi"
@@ -27,11 +28,13 @@ class AircraftKeys:
 
     # Speeds
     # Linear speeds
+    speed = "speed"
     u = "u"
     v = "v"
     w = "w"
 
     # Angular speed
+    speed_ang = "speed_ang"
     p = "p"
     q = "q"
     r = "r"
@@ -54,11 +57,19 @@ class AircraftKeys:
     cg = "cg"
     mass = "m"
 
+    # Position
+    position = "position"
+    lat = "latitude"
+    lon = "longitude"
+    earth_position = "earth_position"
+
     # Others
+    fuel = "fuel"
     anemometer = "anemometer"
     inertial = "inertial"
     aerodynamic = "aerodynamic"
     T_lever = "Throttle_lever"
+
 
 
 __all__ = ["AircraftKeys"]
