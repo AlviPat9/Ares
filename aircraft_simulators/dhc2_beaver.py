@@ -16,7 +16,7 @@ from scipy.signal import dlti
 import json
 
 
-class DHC_beaver(Aircraft):
+class DHC2Beaver(Aircraft):
     """
 
     Definition of the model for the DHC2 - Beaver.
@@ -543,4 +543,4 @@ class DHC_beaver(Aircraft):
                          ])
 
 
-__all__ = ["DHC_beaver"]
+__all__ = ["DHC2Beaver"]
