@@ -173,7 +173,7 @@ class Aircraft(ABC):
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
     @abstractmethod
-    def step(self, *args):
+    def calculate(self, *args):
         """
 
         Method to launch the calculation of the equations of the aircraft.
@@ -182,6 +182,18 @@ class Aircraft(ABC):
 
         """
 
+        raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
+
+    @abstractmethod
+    def state_to_dict(self, *args):
+        """
+
+        Method to convert aircraft state to a dictionary
+
+        @param args: Additional arguments of the function.
+
+        """
+        
         raise NotImplementedError('As it is an abstract method, it should be overwritten in the appropriate subclass.')
 
 
