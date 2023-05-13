@@ -10,7 +10,8 @@ simulation. Here it is defined the environment of the simulator. After, the rein
 Author: Alvaro Marcos Canedo
 """
 
-from Ares.utilities.keys import AircraftKeys as arc
+from Ares.utilities.keys import AircraftKeys as Ak
+from Ares.utilities.tools import haversine
 
 import gymnasium as gym
 import numpy as np
@@ -44,22 +45,23 @@ class PilotRL(gym.Env):
         # At first, only latitude and longitude
         self.observation_space = gym.spaces.Dict(
             {
-                arc.position: gym.spaces.Box(low=[-90.0, -180.0], high=[90.0, 180.0], shape=(2,), dtype=float),
-                arc.speed: gym.spaces.Box(low=[-120.0, -120.0, -20.0], high=np.array([120.0, 120.0, 20.0]), shape=(3,),
-                                          dtype=float),
-                arc.euler_angles: gym.spaces.Box(low=np.array([-np.pi, -np.pi / 2, 0.0]),
-                                                 high=np.array([np.pi, np.pi / 2, 2 * np.pi]),
-                                                 shape=(3,), dtype=float),
-                arc.fuel: gym.spaces.Box(low=0.0, high=550.0, shape=(1,), dtype=float)
+                Ak.position: gym.spaces.Box(low=np.ndarray([-90.0, -180.0]), high=np.ndarray([90.0, 180.0]),
+                                            shape=(2,), dtype=np.float32),
+                Ak.speed: gym.spaces.Box(low=np.ndarray([-120.0, -120.0, -20.0]), high=np.array([120.0, 120.0, 20.0]),
+                                         shape=(3,), dtype=np.float32),
+                Ak.euler_angles: gym.spaces.Box(low=np.array([-np.pi, -np.pi / 2, 0.0]),
+                                                high=np.array([np.pi, np.pi / 2, 2 * np.pi]),
+                                                shape=(3,), dtype=np.float32),
+                Ak.fuel: gym.spaces.Box(low=0.0, high=550.0, shape=(1,), dtype=np.float32)
             }
         )
 
         self.action_space = gym.spaces.Dict(
             {
-                arc.de: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=float),
-                arc.da: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=float),
-                arc.dr: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=float),
-                arc.t_lever: gym.spaces.Box(low=0.0, high=2400.0, shape=(1,), dtype=float)
+                Ak.de: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
+                Ak.da: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
+                Ak.dr: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
+                Ak.t_lever: gym.spaces.Box(low=0.0, high=2400.0, shape=(1,), dtype=np.float32)
 
             }
         )
@@ -81,6 +83,9 @@ class PilotRL(gym.Env):
 
         # Set a tolerance for checking if it arrived at the destination port
         self.tol = 1000.0  # Defined as 1km
+
+        # Initialize last distance
+        self.last_distance = None
 
         # Initialize the logger
         self.logger = log.getLogger(__name__)
@@ -105,16 +110,17 @@ class PilotRL(gym.Env):
         # Update current step
         self.current_step += 1
 
-        # TODO -> As its goal is to take the aircraft from one place to another, the distance between the points
-        #  should be calculated. So write the distance between 2 points in the space based on HAVERSINE formula.
-        distance = 0.0
+        # Calculate distance to destination based on Heaversine formula
+        distance = haversine(self.destination[0], self.destination[1], self.state[Ak.position][0],
+                             self.state[Ak.position][1])
 
         # TODO -> Define reward function. The reward function can take multiple inputs. The first one must be the
         #  distance, then maybe it is a good approach to take fuel and steps as a penalty.
         distance_reward = max(0, self.last_distance - distance)
-        fuel_penalty = self.state[arc.fuel]
-        time_penalty = self.simulator.integration.time / self.max_step
-        reward = distance_reward - fuel_penalty - time_penalty
+        # fuel_penalty = self.state[Ak.fuel]
+        # time_penalty = self.simulator.integration.time / self.max_step
+        # reward = distance_reward - fuel_penalty - time_penalty
+        reward = distance_reward
 
         # TODO -> Define Done
         # Check if done
@@ -129,15 +135,19 @@ class PilotRL(gym.Env):
         # Log relevant information
         self.logger.info(f"Step: {self.current_step}, Reward: {reward}, Done: {done}")
 
+        # Set last distance
+        self.last_distance = distance
+
         return self.state, reward, done
 
-    def reset(self) -> np.ndarray:
+    def reset(self, **kwargs) -> np.ndarray:
         """
 
         Reset method of the Pilot environment.
 
         @return: Initial state of the model.
         @rtype: np.ndarray
+        :param **kwargs:
         """
 
         # Reset simulation
@@ -151,7 +161,8 @@ class PilotRL(gym.Env):
     def render(self):
         """
 
-        Render method of the Pilot environment. Used to generate and return a visual representation of the current state.
+        Render method of the Pilot environment. Used to generate and return a visual representation of the
+        current state.
 
         @return:
         """
