@@ -9,9 +9,14 @@ simulation. Here it is defined the environment of the simulator. After, the rein
 
 Author: Alvaro Marcos Canedo
 """
-
 from Ares.utilities.keys import AircraftKeys as Ak
 from Ares.utilities.tools import haversine
+
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Dense
+from tensorflow.python.keras.optimizer_v1 import Adam
+
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -110,7 +115,7 @@ class PilotRL(gym.Env):
         # Update current step
         self.current_step += 1
 
-        # Calculate distance to destination based on Heaversine formula
+        # Calculate distance to destination based on Haversine formula
         distance = haversine(self.destination[0], self.destination[1], self.state[Ak.position][0],
                              self.state[Ak.position][1])
 
@@ -169,4 +174,3 @@ class PilotRL(gym.Env):
         pass
 
 
-__all__ = ["PilotRL"]
