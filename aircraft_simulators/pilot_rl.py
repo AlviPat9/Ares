@@ -174,3 +174,130 @@ class PilotRL(gym.Env):
         pass
 
 
+class PilotAgentTF:
+    """
+
+    Pilot agent definition. This definition is based on Neural networks model. It has predefined values for the neural
+    networks. It is also done in tensorflow. Maybe an implementation with pytorch could be great.
+
+    """
+
+    def __init__(self, layers: int, input_shape: int, neurons: np.ndarray, activation_function: list, action_size: int,
+                 env: Any):
+        """
+
+        Constructor method
+
+        @param layers: Number of layers that the neural network must have. At least, the input and output layer.
+        @type layers: int
+        @param input_shape: Input shape of the model. Should be the same as the state.
+        @type input_shape: int
+        @param  neurons: Number of neurons of each layer.
+        @type neurons: np.ndarray
+        @param activation_function: List with the activation function for the layers of the neural network.
+        @type activation_function: list
+        @param action_size: Action length for the output layer.
+        @type action_size: int
+        @param env: Environment defined for training the agent.
+        @type env: Any
+
+        """
+        self.action_size = action_size
+
+        # Build Neural Network model
+        self.model = self._build_model(layers, input_shape, neurons, activation_function)
+
+        # Set optimizer
+        self.optimizer = Adam(learning_rate=0.01)
+
+        # Set flight environment
+        self.env = env
+
+    def _build_model(self, layers: int, input_shape: int, neurons: np.ndarray, activation_function: list) -> Sequential:
+        """
+
+        @param layers: Number of layers that the neural network must have. At least, the input and output layer.
+        @type layers: int
+        @param input_shape: Input shape of the model. Should be the same as the state.
+        @type input_shape: int
+        @param  neurons: Number of neurons of each layer.
+        @type neurons: np.ndarray
+        @param activation_function: List with the activation function for the layers of the neural network.
+        @type activation_function: list
+
+        @return: Neural networks model for the Reinforcement Learning model.
+        @rtype: Sequential
+        """
+        model = Sequential(Dense(neurons[0], activation=activation_function[0], input_shape=(input_shape,)))
+
+        for i in range(1, layers + 1):
+            model.add(Dense(neurons[i], activation=activation_function[i]))
+
+        model.add(Dense(self.action_size, activation=activation_function[-1]))
+
+        return model
+
+    def get_action(self, state: dict) -> dict:
+        """
+
+        Method to retrieve actions based on the current state of the aircraft.
+
+        @param state: Actual state of the aircraft.
+        @type state: dict
+
+        @return: Actions predicted by the neural network model for the simulator.
+        @rtype: dict
+        """
+        # Convert state (dictionary) to np.ndarray type
+        state_array = np.concatenate([state[key] for key in state.keys()], axis=-1)
+
+        # Predict action values with neural network model
+        action_values = self.model.predict(np.expand_dims(state_array, axix=0))
+
+        # Return of the policy (In this case is greedy policy)
+        return {key: action_values[i] for i, key in enumerate(state.keys())}
+
+    def train(self, episodes: int, max_step_per_episode: int) -> list:
+        """
+
+        Train the agent using the provided environment.
+
+        @param episodes: Total number of episodes to train the agent.
+        @type episodes: int
+        @param max_step_per_episode: Maximum number of steps or actions the agent can take within a single episode.
+        @type max_step_per_episode: int
+
+        @return: List containing the reward assigned to each episode.
+        @rtype: list
+        """
+
+        # Initialize reward storage
+        rewards_storage = []
+
+        for i in range(episodes):
+            # Initialize for each episode
+            state = self.env.reset()
+            episode_reward = 0
+
+            for step in range(max_step_per_episode):
+
+                # Get action from the agent.
+                action = self.get_action(state)
+
+                # Get calculation step
+                state, reward, done = self.env.step(action)
+
+                # Update reward
+                episode_reward += reward
+
+                # Check if calculation is done
+                if done:
+                    break
+
+            # Append reward to list
+            rewards_storage.append(episode_reward)
+
+        return rewards_storage
+
+
+__all__ = ["PilotRL", "PilotAgentTF"]
