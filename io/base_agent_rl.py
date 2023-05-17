@@ -11,7 +11,11 @@ Author: Alvaro Marcos Canedo
 
 from abc import ABC, abstractmethod
 
+from tensorflow.python.keras.models import load_model
+
 from typing import Any
+
+import os
 
 
 class BaseAgentRL(ABC):
@@ -38,6 +42,34 @@ class BaseAgentRL(ABC):
 
         # Instantiate environment
         self.env = env
+
+        # Initialize model
+        self.model = None
+
+    def save_model(self, filepath: str) -> None:
+        """
+
+        Method to save the model.
+
+        @param filepath: Path to store the Neural network model.
+        @type filepath: str
+        """
+
+        # Save model
+        self.model.save(filepath)
+        print(f'Model saved as: {filepath}')
+
+    def load_model(self, filepath: str) -> None:
+        """
+
+        Method to load an existing model.
+
+        @param filepath: Path to the stored model to load.
+        @type filepath: str
+        """
+
+        # Load existing model
+        self.model = load_model(filepath)
 
     @abstractmethod
     def train(self, *args):
