@@ -11,6 +11,7 @@ Author: Alvaro Marcos Canedo
 """
 from Ares.utilities.keys import AircraftKeys as Ak
 from Ares.utilities.tools import haversine
+from Ares.io.base_agent_rl import BaseAgentRL
 
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense
@@ -50,12 +51,12 @@ class PilotRL(gym.Env):
         # At first, only latitude and longitude
         self.observation_space = gym.spaces.Dict(
             {
-                Ak.position: gym.spaces.Box(low=np.ndarray([-90.0, -180.0]), high=np.ndarray([90.0, 180.0]),
+                Ak.position: gym.spaces.Box(low=np.ndarray([-np.pi/2, -np.pi]), high=np.ndarray([np.pi/2, np.pi]),
                                             shape=(2,), dtype=np.float32),
                 Ak.speed: gym.spaces.Box(low=np.ndarray([-120.0, -120.0, -20.0]), high=np.array([120.0, 120.0, 20.0]),
                                          shape=(3,), dtype=np.float32),
-                Ak.euler_angles: gym.spaces.Box(low=np.array([-np.pi, -np.pi / 2, 0.0]),
-                                                high=np.array([np.pi, np.pi / 2, 2 * np.pi]),
+                Ak.euler_angles: gym.spaces.Box(low=np.array([-np.pi, -np.pi/2, 0.0]),
+                                                high=np.array([np.pi, np.pi/2, 2*np.pi]),
                                                 shape=(3,), dtype=np.float32),
                 Ak.fuel: gym.spaces.Box(low=0.0, high=550.0, shape=(1,), dtype=np.float32)
             }
@@ -63,9 +64,9 @@ class PilotRL(gym.Env):
 
         self.action_space = gym.spaces.Dict(
             {
-                Ak.de: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
-                Ak.da: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
-                Ak.dr: gym.spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32),
+                Ak.de: gym.spaces.Box(low=-np.pi/6, high=np.pi/6, shape=(1,), dtype=np.float32),
+                Ak.da: gym.spaces.Box(low=-np.pi/6, high=np.pi/6, shape=(1,), dtype=np.float32),
+                Ak.dr: gym.spaces.Box(low=-np.pi/6, high=np.pi/6, shape=(1,), dtype=np.float32),
                 Ak.t_lever: gym.spaces.Box(low=0.0, high=2400.0, shape=(1,), dtype=np.float32)
 
             }
@@ -145,14 +146,13 @@ class PilotRL(gym.Env):
 
         return self.state, reward, done
 
-    def reset(self, **kwargs) -> np.ndarray:
+    def reset(self) -> np.ndarray:
         """
 
         Reset method of the Pilot environment.
 
         @return: Initial state of the model.
         @rtype: np.ndarray
-        :param **kwargs:
         """
 
         # Reset simulation
@@ -174,11 +174,13 @@ class PilotRL(gym.Env):
         pass
 
 
-class PilotAgentTF:
+class PilotAgentTF(BaseAgentRL):
     """
 
     Pilot agent definition. This definition is based on Neural networks model. It has predefined values for the neural
     networks. It is also done in tensorflow. Maybe an implementation with pytorch could be great.
+
+    It is based on a policy gradient approach. It is a basic policy-based reinforcement learning algorithm.
 
     """
 
@@ -202,16 +204,14 @@ class PilotAgentTF:
         @type env: Any
 
         """
-        self.action_size = action_size
+
+        super().__init__(action_size, env)
 
         # Build Neural Network model
         self.model = self._build_model(layers, input_shape, neurons, activation_function)
 
         # Set optimizer
         self.optimizer = Adam(learning_rate=0.01)
-
-        # Set flight environment
-        self.env = env
 
     def _build_model(self, layers: int, input_shape: int, neurons: np.ndarray, activation_function: list) -> Sequential:
         """
