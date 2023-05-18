@@ -71,7 +71,7 @@ class ForwardEuler(BaseIntegrator):
 
         """
 
-        self._state = self._state + self._step_size * self._system(self.time, args)
+        self._state = self._state + self._step_size * self._system(self.time, *args)
         self.time += self._step_size
 
         return self._state
