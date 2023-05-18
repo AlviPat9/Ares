@@ -41,7 +41,7 @@ class RK4(BaseIntegrator):
 
         self.time = 0.0
 
-    def integrate(self, args: object):
+    def integrate(self, *args: object):
         """
 
         Method to integrate for the entire time defined the model.
@@ -61,7 +61,7 @@ class RK4(BaseIntegrator):
         return complete_state
 
     # noinspection PyCallingNonCallable
-    def integrate_step(self, args: object):
+    def integrate_step(self, *args: object):
         """
 
         Method to integrate one step of the model.
@@ -70,10 +70,10 @@ class RK4(BaseIntegrator):
         @type args: object
 
         """
-        k1 = self._step_size * self._system(self.time, args)
-        k2 = self._step_size * self._system(self.time + self._step_size/2, tuple(map(lambda x, y: x + y/2, args, k1)))
-        k3 = self._step_size * self._system(self.time + self._step_size/2, tuple(map(lambda x, y: x + y/2, args, k2)))
-        k4 = self._step_size * self._system(self.time + self._step_size, tuple(map(lambda x, y: x + y, args, k3)))
+        k1 = self._step_size * self._system(self.time, self._state, *args)
+        k2 = self._step_size * self._system(self.time + self._step_size/2, self._state + k1 * 0.5, *args)
+        k3 = self._step_size * self._system(self.time + self._step_size/2, self._state + 0.5 * k2, *args)
+        k4 = self._step_size * self._system(self.time + self._step_size, self._state + 0.5 * k3, *args)
 
         self._state = self._state + (1/6) * (k1 + 2*k2 + 2*k3 + k4)
         self.time += self._step_size
