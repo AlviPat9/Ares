@@ -71,9 +71,9 @@ class RK4(BaseIntegrator):
 
         """
         k1 = self._step_size * self._system(self.time, self._state, *args)
-        k2 = self._step_size * self._system(self.time + self._step_size/2, self._state + k1 * 0.5, *args)
-        k3 = self._step_size * self._system(self.time + self._step_size/2, self._state + 0.5 * k2, *args)
-        k4 = self._step_size * self._system(self.time + self._step_size, self._state + 0.5 * k3, *args)
+        k2 = self._step_size * self._system(self.time + self._step_size / 2, self._state + k1 * self._step_size / 2, *args)
+        k3 = self._step_size * self._system(self.time + self._step_size / 2, self._state + k2 * self._step_size / 2, *args)
+        k4 = self._step_size * self._system(self.time + self._step_size, self._state + k3 * self._step_size, *args)
 
         self._state = self._state + (1/6) * (k1 + 2*k2 + 2*k3 + k4)
         self.time += self._step_size
